@@ -1,0 +1,211 @@
+CREATE DATABASE job_acceptance_db;
+USE job_acceptance_db;
+CREATE TABLE candidates (
+    candidate_id INT AUTO_INCREMENT PRIMARY KEY,
+    age INT,
+    gender VARCHAR(20),
+    degree VARCHAR(100),
+    academic_score DECIMAL(5,2),
+    skills_match_percentage DECIMAL(5,2),
+    certifications INT,
+    experience_years DECIMAL(5,2),
+    experience_category VARCHAR(30),
+    interview_score DECIMAL(5,2),
+    employability_test_score DECIMAL(5,2),
+    company_tier VARCHAR(30),
+    competition_level VARCHAR(30),
+    placement_status VARCHAR(30),
+    job_acceptance_status TINYINT,
+    placement_probability DECIMAL(5,2)
+);
+
+SELECT * FROM candidates;
+SELECT COUNT(*) AS total_candidates
+FROM candidates;
+    SUM(age IS NULL) AS missing_age,
+    SUM(gender IS NULL) AS missing_gender,
+    SUM(degree IS NULL) AS missing_degree,
+    SUM(academic_score IS NULL) AS missing_academic_score,
+    SUM(skills_match_percentage IS NULL) AS missing_skills_match,
+    SUM(experience_years IS NULL) AS missing_experience,
+    SUM(interview_score IS NULL) AS missing_interview_score
+FROM candidates;
+DELETE c1
+FROM candidates c1
+JOIN candidates c2
+    ON c1.candidate_id > c2.candidate_id
+    AND c1.age <=> c2.age
+    AND c1.gender <=> c2.gender
+    AND c1.degree <=> c2.degree
+    AND c1.academic_score <=> c2.academic_score
+    AND c1.skills_match_percentage <=> c2.skills_match_percentage
+    AND c1.certifications <=> c2.certifications
+    AND c1.experience_years <=> c2.experience_years
+    AND c1.interview_score <=> c2.interview_score
+    AND c1.employability_test_score <=> c2.employability_test_score
+    AND c1.company_tier <=> c2.company_tier
+    AND c1.competition_level <=> c2.competition_level
+    AND c1.placement_status <=> c2.placement_status
+    AND c1.job_acceptance_status <=> c2.job_acceptance_status;
+SELECT
+    ROUND(
+        100.0 * SUM(
+            CASE WHEN placement_status = 'Placed' THEN 1 ELSE 0 END
+        ) / NULLIF(COUNT(*), 0),
+        2
+    ) AS placement_rate_percentage
+FROM candidates;
+SELECT
+    ROUND(
+        100.0 * SUM(
+            CASE WHEN job_acceptance_status = 1 THEN 1 ELSE 0 END
+        ) / NULLIF(
+            SUM(
+                CASE
+                    WHEN job_acceptance_status IN (0, 1) THEN 1
+                    ELSE 0
+                END
+            ),
+            0
+        ),
+        2
+    ) AS job_acceptance_rate_percentage
+FROM candidates;
+SELECT ROUND(AVG(interview_score), 2) AS average_interview_score
+FROM candidates;
+SELECT ROUND(AVG(skills_match_percentage), 2) AS average_skills_match
+FROM candidates;
+SELECT
+    company_tier,
+    COUNT(*) AS total_candidates,
+    SUM(
+        CASE WHEN job_acceptance_status = 1 THEN 1 ELSE 0 END
+    ) AS accepted_offers,
+    ROUND(
+        100.0 * SUM(
+            CASE WHEN job_acceptance_status = 1 THEN 1 ELSE 0 END
+        ) / NULLIF(
+            SUM(
+                CASE
+                    WHEN job_acceptance_status IN (0, 1) THEN 1
+                    ELSE 0
+                END
+            ),
+            0
+        ),
+        2
+    ) AS acceptance_rate_percentage
+FROM candidates
+GROUP BY company_tier;
+SELECT
+    CASE
+        WHEN academic_score < 50 THEN 'Below 50'
+        WHEN academic_score < 60 THEN '50-59'
+        WHEN academic_score < 70 THEN '60-69'
+        WHEN academic_score < 80 THEN '70-79'
+        ELSE '80 and Above'
+    END AS academic_band,
+    COUNT(*) AS total_candidates,
+    ROUND(AVG(job_acceptance_status) * 100, 2)
+        AS acceptance_rate_percentage
+FROM candidates
+WHERE job_acceptance_status IN (0, 1)
+    AND academic_score IS NOT NULL
+GROUP BY academic_band
+ORDER BY MIN(academic_score);
+
+-- 13. Interview Score vs Acceptance
+SELECT
+    CASE
+        WHEN interview_score < 40 THEN 'Low'
+        WHEN interview_score < 70 THEN 'Medium'
+        ELSE 'High'
+    END AS interview_category,
+    COUNT(*) AS total_candidates,
+    ROUND(AVG(job_acceptance_status) * 100, 2)
+        AS acceptance_rate_percentage
+FROM candidates
+WHERE job_acceptance_status IN (0, 1)
+    AND interview_score IS NOT NULL
+GROUP BY interview_category;
+SELECT
+    CASE
+        WHEN experience_years = 0 THEN 'Fresher'
+        WHEN experience_years <= 2 THEN 'Junior'
+        ELSE 'Experienced'
+    END AS experience_category,
+    COUNT(*) AS total_candidates,
+    ROUND(AVG(job_acceptance_status) * 100, 2)
+        AS acceptance_rate_percentage
+FROM candidates
+WHERE job_acceptance_status IN (0, 1)
+    AND experience_years IS NOT NULL
+GROUP BY experience_category;
+SELECT
+    CASE
+        WHEN skills_match_percentage < 50 THEN 'Low'
+        WHEN skills_match_percentage < 75 THEN 'Medium'
+        ELSE 'High'
+    END AS skills_match_level,
+    COUNT(*) AS total_candidates,
+    ROUND(AVG(job_acceptance_status) * 100, 2)
+        AS acceptance_rate_percentage
+FROM candidates
+WHERE job_acceptance_status IN (0, 1)
+    AND skills_match_percentage IS NOT NULL
+GROUP BY skills_match_level;
+SELECT
+    certifications,
+    COUNT(*) AS total_candidates,
+    ROUND(AVG(job_acceptance_status) * 100, 2)
+        AS acceptance_rate_percentage
+FROM candidates
+WHERE job_acceptance_status IN (0, 1)
+    AND certifications IS NOT NULL
+GROUP BY certifications
+ORDER BY certifications;
+
+-- 17. Offer Rejection Count
+SELECT COUNT(*) AS rejected_offers
+FROM candidates
+WHERE job_acceptance_status = 0;
+SELECT
+    ROUND(
+        100.0 * SUM(
+            CASE WHEN job_acceptance_status = 0 THEN 1 ELSE 0 END
+        ) / NULLIF(
+            SUM(
+                CASE
+                    WHEN job_acceptance_status IN (0, 1) THEN 1
+                    ELSE 0
+                END
+            ),
+            0
+        ),
+        2
+    ) AS rejection_percentage
+FROM candidates;
+SELECT *
+FROM candidates
+WHERE job_acceptance_status = 0
+ORDER BY interview_score DESC;
+SELECT
+    COUNT(*) AS total_candidates,
+    SUM(
+        CASE WHEN placement_status = 'Placed' THEN 1 ELSE 0 END
+    ) AS placed_candidates,
+    ROUND(
+        100.0 * SUM(
+            CASE WHEN placement_status = 'Placed' THEN 1 ELSE 0 END
+        ) / NULLIF(COUNT(*), 0),
+        2
+    ) AS placement_rate_percentage,
+    ROUND(AVG(interview_score), 2) AS average_interview_score,
+    ROUND(AVG(skills_match_percentage), 2) AS average_skills_match,
+    SUM(
+        CASE WHEN job_acceptance_status = 1 THEN 1 ELSE 0 END
+    ) AS accepted_offers,
+    SUM(
+        CASE WHEN job_acceptance_status = 0 THEN 1 ELSE 0 END
+    ) AS rejected_offers
+FROM candidates;
